@@ -6,6 +6,8 @@ build/
 !**/src/main/**/build/
 !**/src/test/**/build/
 .DS_Store
+primary-db
+secondary-db
 
 ### STS ###
 .apt_generated

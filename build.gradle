@@ -10,6 +10,34 @@ buildscript {
 	}
 }
 
+task build() {
+	doLast {
+		exec(layout, './gradlew clean build --stacktrace', "../sys-foxtrot-rest")
+		exec(layout, './gradlew clean build --stacktrace', "../sys-foxtrot-etl")
+		exec(layout, 'npm run build', "../sys-foxtrot-ui")
+	}
+}
+
+void exec(def layout, String command, String dir='.') {
+	banner('Running: ' + command + ' (' + dir + ')')
+	def sout = new StringBuilder(), serr = new StringBuilder()
+	Process proc = Runtime.getRuntime().exec(command, null, layout.projectDirectory.file(dir).asFile)
+	proc.consumeProcessOutput(sout, serr)
+	proc.waitForOrKill(300_000)
+	println "out> $sout\nerr> $serr"
+	banner('Done Running: ' + command + ' (' + dir + ')')
+}
+
+void banner(String value) {
+	println ""
+	println "\u001B[32m*****************************************************************\u001B[0m"
+	println value
+	println "\u001B[32m*****************************************************************\u001B[0m"
+	println ""
+}
+
+
+
 // DBUNIT!
 import java.sql.Connection
 import java.sql.DriverManager
