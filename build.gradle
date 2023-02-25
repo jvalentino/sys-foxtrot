@@ -1,0 +1,119 @@
+
+buildscript {
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		// DBUNIT!
+		classpath group: 'org.dbunit', name: 'dbunit', version: '2.7.3'
+		classpath 'org.postgresql:postgresql:42.2.5'
+	}
+}
+
+// DBUNIT!
+import java.sql.Connection
+import java.sql.DriverManager
+import org.dbunit.database.*
+import org.dbunit.dataset.*
+import org.dbunit.dataset.xml.*
+import org.dbunit.util.fileloader.*
+import org.dbunit.operation.*
+
+// https://stackoverflow.com/questions/44740416/drivermanager-doesnt-see-dependency-in-gradle-custom-plugins-task
+IDatabaseConnection getConnection(String jdbc, String username, String password) {
+	// database connection
+	Class.forName("org.postgresql.Driver")
+	Connection jdbcConnection = DriverManager.getConnection(
+			jdbc,
+			[user: username, password: password] as Properties, getClass())
+
+	IDatabaseConnection connection = new DatabaseConnection(jdbcConnection)
+	connection
+}
+
+void exportDatabase(String jdbc, String username, String password, String fileName) {
+	IDatabaseConnection connection = getConnection(jdbc, username, password)
+
+	// full database export
+	IDataSet fullDataSet = connection.createDataSet()
+	FlatXmlDataSet.write(fullDataSet, new FileOutputStream(fileName))
+
+	connection.close()
+}
+
+void loadDatabase(String jdbc, String username, String password, String fileName) {
+	IDatabaseConnection connection = getConnection(jdbc, username, password)
+	DataFileLoader loader = new FlatXmlDataFileLoader()
+
+	File file = layout.projectDirectory.file(fileName).asFile
+
+	IDataSet ds = loader.loadDataSet(file.toURL())
+	try {
+		DatabaseOperation.REFRESH.execute(connection, ds) // refresh of the DB.
+	} catch (e) {
+		e.printStackTrace()
+	} finally {
+		connection.close()
+	}
+}
+
+void deleteDatabase(String jdbc, String username, String password, String fileName) {
+	IDatabaseConnection connection = getConnection(jdbc, username, password)
+	DataFileLoader loader = new FlatXmlDataFileLoader()
+
+	File file = layout.projectDirectory.file(fileName).asFile
+
+	IDataSet ds = loader.loadDataSet(file.toURL())
+	try {
+		DatabaseOperation.DELETE_ALL.execute(connection, ds) // refresh of the DB.
+	} catch (e) {
+		e.printStackTrace()
+	} finally {
+		connection.close()
+	}
+}
+
+task exportMainDb() {
+	doLast {
+		exportDatabase(
+				"jdbc:postgresql://localhost:5432/examplesys",
+				"postgres",
+				"postgres",
+				"config/dbunit/db.xml"
+		)
+	}
+}
+
+task loadMainDb() {
+	doLast {
+		loadDatabase(
+				"jdbc:postgresql://localhost:5432/examplesys",
+				"postgres",
+				"postgres",
+				"config/dbunit/db.xml"
+		)
+	}
+}
+
+task exportWarehouseDb() {
+	doLast {
+		exportDatabase(
+				"jdbc:postgresql://localhost:5433/dw",
+				"postgres",
+				"postgres",
+				"config/dbunit/db-dw.xml"
+		)
+	}
+}
+
+task deleteWarehouseDb() {
+	doLast {
+		deleteDatabase(
+				"jdbc:postgresql://localhost:5433/dw",
+				"postgres",
+				"postgres",
+				"config/dbunit/db-dw.xml"
+		)
+	}
+}
+
