@@ -235,6 +235,36 @@ Uses the base image of bitnami/postgresql-repmgr:14, which is a Postgres instanc
 
 This is where the new magic happens. There are a lot of ways to do this, and in my case I made a standalone application that runs on a schedule. With it is executed it handles first pulling over any data that has changed (in groups that can fit in memory), and then finally by clearing old data out of primary database.
 
+It can be reached at http://localhost:8081, where I put up a general status page:
+
+![img](./wiki/etl-run.png)
+
+#### Data Warehousing Theory
+
+Our primary database is not infinitely scalable, and the more data it has, the slower it will eventually become. As a result, we consider that not all data is needed at all times from a user perspective, so the theory is that we can offload the data that is not likely needed somewhere else. There is also the fact that reporting operations can become intensive, and slow down performance overall, so having a database separate from what the end user is functioning with, allows us to not impact their performance. 
+
+An important consideration is that the warehousing database is not a 1:1 representation, as we are likely to have to transform data in order to optimize reporting against it. Some data will be a straight copy, while others will require some sort of transformation. This means we can't just turn on replication and walk away. So how do we handle copying and transforming potentially massive amounts of data?
+
+#### Schema Insertion Order
+
+![img](wiki/schema.png)
+
+When populating any database, there is an order, and figuring out that order is the first step. For small schemas just draw arrows to indicate relationships, and the this makes it relatively easy to see the insertion order. For larger schema, consider that relationships are a directed acyclic graph, and you can use an algorithm (https://en.wikipedia.org/wiki/Dijkstra%27s_algorithm) to automate figuring it out. In cases where there are loops dependencies, you will have to set one to null and then come back at the end and handle them.
+
+#### Data Batching
+
+This is where keeping track of when every record was updated comes in handy. We only need to pul records for a given table that where changed since the last time we did this. In this example, only records 2, 4, 5, 6, 7, and 8 have are new or have been changed:
+
+![img](wiki/etl-1.png)
+
+Since we can't always pull every single record into application memory, we have to pull records in a group using pagination in whatever our technology is. In this example, we are pulling records in groups of 5:
+
+![img](wiki/etl-2.png)
+
+This process is repeated until all the records (that have been updated) have been dealt with:
+
+![img](wiki/etl-3.png)
+
 
 
 ### secondary-pgpool
