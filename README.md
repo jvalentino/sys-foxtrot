@@ -265,7 +265,9 @@ This process is repeated until all the records (that have been updated) have bee
 
 ![img](wiki/etl-3.png)
 
+When this is done, it then deletes data that is beyond our retention threshold from the primary database:
 
+![img](wiki/etl-4.png)
 
 ### secondary-pgpool
 
